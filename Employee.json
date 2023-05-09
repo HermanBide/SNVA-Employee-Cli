@@ -1,0 +1,14 @@
+Instructions for Employee Management System
+"/employees"-> GET -> 'show all employees'
+ "/employees"-> POST-> 'add an employee'->REQ-PAYLOAD 
+                                                         {
+                                                            id:number --> auto generate it ()
+                                                            name: string;
+                                                            age: number;
+                                                            contact: string;
+                                                            email: string;
+                                                        }
+"/employees" -> GET -> queryString a number -> 'show employee by id'],
+"/employees" -> GET -> queryString a name ->         name: [['string'], 'show employee by name'],
+"/employees" -> GET -> queryString a name ->  email: [['string'], 'show employee by email'],
+"/employees" -> DELETE -> queryString a name -> del: [['int'], 'delete an employee by id'],

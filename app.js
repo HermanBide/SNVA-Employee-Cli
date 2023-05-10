@@ -1,152 +1,62 @@
-// Express Features
-// Fast Serverside Dev
-// Middlewares
-// Routing
-// Templating
-// Debugging
+var createError = require('http-errors');
+var fs = require('fs');
+var express = require('express');
+var path = require('path');
+var cookieParser = require('cookie-parser');
+var logger = require('morgan');
 
-const http = require("http");
-const fs = require("fs");
-const hostname = "127.0.0.1";
-const port = 3000;
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/users');
+var employeeRouter = require('./routes/employes')
+var productRouter = require('./routes/products');
 
-class Person {
-  constructor(name, age, email, contact) {
-    this.name = name;
-    this.age = age;
-    this.email = email;
-    this.contact = contact;
-  }
-}
+var app = express();
 
-const users = [
-  new Person("John", 25, "John@example.com", "9252344534"),
-  new Person("Alice", 30, "Alice@example.com"),
-  new Person("Bob", 35, "Bob@example.com"),
-];
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
 
-const server = http.createServer((req, res) => {
-  if (req.url === "/employee" && req.method == "POST") {
-    const chunks = [];
-    req.on("data", (chunk) => {
-      chunks.push(chunk);
-    });
+// app.use(logger((tokens,req,res)=>{
+//   return [
+//     tokens.method(req, res),
+//     tokens.url(req, res),
+//     tokens.status(req, res),
+//     tokens.res(req, res, 'content-length'), '-',
+//     tokens['response-time'](req, res), 'ms'
+// ].join(' ')
+// }));
 
-    req.on("end", () => {
-      console.log("Chunks Ended");
-      // Global Object that is avaliable to all
-      // it does a binary kind of operation
-      const data = Buffer.concat(chunks);
-      const newEmployee = JSON.parse(data.toString());
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-    //   res.end(data);
-      res.end(JSON.stringify(newEmployee.toString()));
-      console.log("Data received " + data + typeof data);
-    });
-  }else if (req.url === "/employee" && req.method == "GET") {
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ Test: "Data" }));
-  }
-  //EMPLOYEES BY ID
-  else if (req.url === "/employee/" && req.method === "GET") {
-    //return all id
-    const userId = req.url.substring(10);
-    const user = users[userId - 1];
-    if (user) {
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(user));
-    } else {
-      res.statusCode = 404;
-      res.end(JSON.stringify({ error: "User not found" }));
-    }
-    //check if id that is being searched
-    //return id's useinfo
-  }
-  //EMPLOYEES BY NAME
-  else if (req.url === "/employee?name=" && req.method === "GET") {
-    const searchParams = new URLSearchParams(req.url.substring(1));
-    const userName = searchParams.get("name");
-    const user = users.findOne((user) => user.name === userName);
-    if (user) {
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(user));
-    } else {
-      res.statusCode = 404;
-      res.end(JSON.stringify({ error: "User not found" }));
-    }
-  }
+let fileName = `log`
 
-  //EMPLOYEES return NAME by EMAIL
-  else if (req.url === "/employee/search/email=" && req.method === "GET") {
-    const searchParams = new URLSearchParams(req.url.substring(1));
-    const userEmail = searchParams.get("email");
+let logStream = fs.createWriteStream(path.join(__dirname,fileName),{overrite:false})
+app.use(logger('dev',{stream:logStream}))
 
-    const user = users.find((user) => user.email === userEmail);
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
-    if (user) {
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(user));
-    } else {
-      res.statusCode = 404;
-      res.end(JSON.stringify({ error: "User not found" }));
-    }
-  }
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/api/v1/employees', employeeRouter);
 
-  //EMPLOYEES BY DELETE EMPLOYEE
- else if (req.url === "/employee/" && req.method === "DELETE") {
-    const userId = req.url.substring(10);
-    const userIndex = userId - 1;
-    if (userIndex >= 0 && userIndex < users.length) {
-        const deletedUser = users.splice(userIndex, 1);
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ success: true, message: 'User deleted successfully' }));
-      } else {
-        res.statusCode = 404;
-        res.end
-      }
-  }
-  if (req.url === "/image" && req.method == "POST") {
-    let contentLength = req.headers["content-length"];
+//PRODUCTS
+app.use('/api/products', productRouter);
 
-    console.log(JSON.stringify(req.headers));
-    console.log(contentLength);
-    if (isNaN(contentLength) || contentLength <= 0) {
-      res.statusCode = 401;
-      res.end(
-        JSON.stringify({ status: "Error", desc: "The File Was not there !" })
-      );
-      return;
-    }
-    let fileName = req.headers["filename"];
-    if (fileName == null) {
-      fileName = "File." + req.headers["content-type"].split("/")[1];
-    }
-    const fileStream = fs.createWriteStream(`${__dirname}/${fileName}`);
-
-    fileStream.on("error", (error) => {
-      console.log("Error File " + error);
-      res.statusCode = 400;
-      res.write(JSON.stringify({ status: "Error", desc: error }));
-      req.end();
-    });
-
-    req.pipe(fileStream);
-
-    req.on("end", () => {
-      fileStream.close(() => {
-        res.end(JSON.stringify({ status: "Upload Successfull" }));
-      });
-    });
-  }
-
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  next(createError(404));
 });
 
-server.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
+// error handler
+app.use(function(err, req, res, next) {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+  // render the error page
+  res.status(err.status || 500);
+  res.render('error');
 });
+
+module.exports = app;
